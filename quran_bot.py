@@ -154,6 +154,7 @@ I'm here to help you find answers to your questions about the Quran using authen
 /start - Show this welcome message
 /help - Show help information
 /about - Learn more about this bot
+/language - Show available languages
 
 May Allah guide us all to the right path. 🤲
 """
@@ -218,6 +219,25 @@ May this tool help you in your journey of learning and understanding the Quran. 
     
     await update.message.reply_text(about_text, parse_mode='Markdown')
 
+async def language_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Send information about available languages."""
+    language_text = """
+🌍 *Language Support*
+
+*Currently Available:*
+• English - Full support with Quran verses and tafsir
+
+*Coming Soon:*
+• Russian (Русский) - Quran verses and tafsir
+• Kazakh (Қазақша) - Quran verses and tafsir
+
+*Note:* For now, I will answer all questions in English with Quran verses and tafsir in English. When other languages become available, you'll be able to choose your preferred language.
+
+Stay tuned for updates! 📚✨
+"""
+    
+    await update.message.reply_text(language_text, parse_mode='Markdown')
+
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Handle incoming messages and provide Quran RAG responses."""
     user_message = update.message.text
@@ -250,6 +270,7 @@ def main() -> None:
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CommandHandler("help", help_command))
     application.add_handler(CommandHandler("about", about))
+    application.add_handler(CommandHandler("language", language_command)) # Add the new handler here
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
     
     # Add error handler
