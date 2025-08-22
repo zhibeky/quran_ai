@@ -2,6 +2,8 @@
 
 An intelligent AI-powered application that provides accurate answers to questions about the Quran using Retrieval-Augmented Generation (RAG) technology. The system searches through authentic Quran translations and Tafsir to provide well-referenced, scholarly responses.
 
+> **🎓 Final Project for [LLM Zoomcamp](https://github.com/DataTalksClub/llm-zoomcamp)** - This project demonstrates advanced LLM applications using RAG, semantic search, and AI-powered question answering systems.
+
 ## ✨ Features
 
 - **🤖 AI-Powered Q&A**: Get intelligent answers to questions about the Quran using OpenAI's language models
