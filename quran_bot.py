@@ -7,6 +7,7 @@ from telegram import Update
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
 from minsearch import AppendableIndex
 from openai import OpenAI
+from user_tracker import UserTracker
 
 # Load environment variables
 load_dotenv()
@@ -23,6 +24,7 @@ class QuranRAGBot:
         self.index = None
         self.client = None
         self.documents = None
+        self.user_tracker = UserTracker()  # Initialize user tracker
         self.setup_rag_system()
         
     def setup_rag_system(self):
@@ -238,6 +240,16 @@ quran_bot = QuranRAGBot()
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Send a message when the command /start is issued."""
+    
+    # Track user
+    user = update.effective_user
+    quran_bot.user_tracker.track_user(
+        user_id=user.id,
+        username=user.username,
+        first_name=user.first_name,
+        last_name=user.last_name
+    )
+    
     welcome_message = """
 🕌 *Welcome to the Quran AI Assistant!*
 
@@ -260,6 +272,7 @@ I'm here to help you find answers to your questions about the Quran using advanc
 /help - Show help information
 /about - Learn more about this bot
 /language - Show available languages
+/stats - Show bot statistics
 
 May Allah guide us all to the right path. 🤲
 """
@@ -297,6 +310,8 @@ Simply type your question in natural language. For example:
 • I'll search multiple times if needed to give you the best answer
 
 *Note:* I provide information based on the Quran and authentic tafsir sources, with the ability to use my knowledge when needed.
+
+*Commands:* /start, /help, /about, /language, /stats
 
 Need help? Just ask! 🤔
 """
@@ -361,9 +376,40 @@ Stay tuned for updates! 📚✨
     
     await update.message.reply_text(language_text, parse_mode='Markdown')
 
+async def stats_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Show bot statistics (admin only)."""
+    try:
+        total_users = quran_bot.user_tracker.get_user_count()
+        active_today = quran_bot.user_tracker.get_active_users_today()
+        
+        stats_text = f"""
+📊 *Bot Statistics*
+
+*Total Users:* {total_users}
+*Active Today:* {active_today}
+
+*Note:* This command shows basic statistics about bot usage.
+"""
+        
+        await update.message.reply_text(stats_text, parse_mode='Markdown')
+        
+    except Exception as e:
+        logger.error(f"Failed to get stats: {e}")
+        await update.message.reply_text("❌ Failed to retrieve statistics.")
+
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Handle incoming messages and provide Quran RAG responses."""
     user_message = update.message.text
+    
+    # Track user message
+    user = update.effective_user
+    quran_bot.user_tracker.track_user(
+        user_id=user.id,
+        username=user.username,
+        first_name=user.first_name,
+        last_name=user.last_name
+    )
+    quran_bot.user_tracker.increment_message_count(user.id)
     
     # Send typing indicator
     await context.bot.send_chat_action(chat_id=update.effective_chat.id, action="typing")
@@ -394,6 +440,7 @@ def main() -> None:
     application.add_handler(CommandHandler("help", help_command))
     application.add_handler(CommandHandler("about", about))
     application.add_handler(CommandHandler("language", language_command)) # Add the new handler here
+    application.add_handler(CommandHandler("stats", stats_command)) # Add the new handler here
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
     
     # Add error handler
