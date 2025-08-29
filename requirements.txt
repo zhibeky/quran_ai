@@ -1,7 +1,7 @@
-python-telegram-bot==21.7
-openai==1.84.0
-minsearch==0.0.4
-requests==2.32.3
-python-dotenv==1.1.1
-python-telegram-bot[job-queue]==21.7
-supabase==1.2.0
+python-telegram-bot
+openai
+minsearch
+requests
+python-dotenv
+python-telegram-bot[job-queue]
+supabase
