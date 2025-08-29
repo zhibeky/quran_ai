@@ -64,13 +64,26 @@ class QuranRAGBot:
         
         return results
     
-    def build_prompt(self, query: str, search_results: list) -> str:
-        """Build the prompt for the LLM using search results"""
-        prompt_template = """
-You are an Imam and a teacher of the Qur'an. 
-Answer the QUESTION using only the CONTEXT provided (which contains Qur'an verses and tafsir). 
-Do not add information that is not in the CONTEXT. 
-If the answer cannot be found in the CONTEXT, say you do not know.
+    def build_context(self, search_results: list) -> str:
+        """Build context from search results"""
+        context = ""
+        for doc in search_results:
+            context = context + f"surah_name: {doc['surah_name']}\nreference: {doc['reference']}\nquran_text: {doc['text']}\ntafsir: {doc['tafsir_text']}\n\n"
+        return context
+    
+    def get_agentic_prompt_template(self) -> str:
+        """Get the agentic prompt template"""
+        return """
+You are an Imam and a teacher of the QURAN.
+
+You're given a QUESTION from a person and that you need to answer with provided CONTEXT. And if there is no CONTEXT you can use your own knowledge.
+At the beginning the context is EMPTY.
+
+The CONTEXT is build with the QURAN and documents of TAFSIR.
+SEARCH_QUERIES contains the queries that were used to retrieve the documents from QURAN to and add them to the context.
+PREVIOUS_ACTIONS contains the actions you already performed.
+
+At the beginning the CONTEXT is empty.
 
 When answering:
 - Use clear, respectful, and simple language. 
@@ -78,34 +91,65 @@ When answering:
 - Always include the surah and ayah reference (e.g., Surah Al-Fatiha 1:5).
 - If the Qur'an text alone does not fully answer the QUESTION and you use tafsir (explanatory commentary) to clarify, explicitly label it as 'Tafsir clarification'.
 
-Format your answer exactly like this:
+You can perform the following actions:
 
-Qur'an evidence:
-<quote Quran verses used>
+- Search in the QURAN and TAFSIR database to get more data for the CONTEXT
+- Answer the question using the CONTEXT
+- Answer the question using your own knowledge
 
-Tafsir clarification (if needed):
-<quote tafsir used or write 'Not needed' if Quran text is enough>
+For the SEARCH action, build search requests based on the CONTEXT and the QUESTION.
+Carefully analyze the CONTEXT and generate the requests to deeply explore the topic. 
 
-Conclusion:
-<Your answer in clear, concise language>
+Don't use search queries used at the previous iterations.
+
+Don't repeat previously performed actions.
+
+Don't perform more than {max_iterations} iterations for a given student question.
+The current iteration number: {iteration_number}. If we exceed the allowed number 
+of iterations, give the best possible answer with the provided information.
+
+Output templates:
+
+If you want to perform search, use this template:
+
+{{
+"action": "SEARCH",
+"reasoning": "<add your reasoning here>",
+"keywords": ["search query 1", "search query 2", ...]
+}}
+
+If you can answer the QUESTION using CONTEXT, use this template:
+
+{{
+"action": "ANSWER_CONTEXT",
+"answer": "<your answer>",
+"source": "CONTEXT"
+}}
+
+If the context doesn't contain the answer, use your own knowledge to answer the question
+
+{{
+"action": "ANSWER",
+"answer": "<your answer>",
+"source": "OWN_KNOWLEDGE"
+}}
 
 <QUESTION>
 {question}
 </QUESTION>
 
-<CONTEXT>
+<SEARCH_QUERIES>
+{search_queries}
+</SEARCH_QUERIES>
+
+<CONTEXT> 
 {context}
 </CONTEXT>
 
-<ANSWER>
+<PREVIOUS_ACTIONS>
+{previous_actions}
+</PREVIOUS_ACTIONS>
 """.strip()
-        
-        context = ""
-        for doc in search_results:
-            context = context + f"surah_name: {doc['surah_name']}\nreference: {doc['reference']}\nquestion: {query}\nquran_text: {doc['text']}\ntafsir: {doc['tafsir_text']}\n\n"
-        
-        prompt = prompt_template.format(question=query, context=context).strip()
-        return prompt
     
     def get_llm_response(self, prompt: str) -> str:
         """Get response from OpenAI LLM"""
@@ -119,15 +163,74 @@ Conclusion:
             logger.error(f"LLM API call failed: {e}")
             return "I apologize, but I'm experiencing technical difficulties. Please try again later."
     
+    def agentic_search(self, question: str, max_iterations: int = 3) -> Dict[str, Any]:
+        """Perform agentic search with multiple iterations"""
+        search_queries = []
+        search_results = []
+        previous_actions = []
+
+        iteration = 0
+        
+        while True:
+            logger.info(f'Agentic RAG iteration #{iteration} for question: {question[:50]}...')
+        
+            context = self.build_context(search_results)
+            prompt = self.get_agentic_prompt_template().format(
+                question=question,
+                context=context,
+                search_queries="\n".join(search_queries),
+                previous_actions='\n'.join([json.dumps(a) for a in previous_actions]),
+                max_iterations=max_iterations,
+                iteration_number=iteration
+            )
+        
+            answer_json = self.get_llm_response(prompt)
+            
+            try:
+                answer = json.loads(answer_json)
+                logger.info(f"Agent action: {answer.get('action', 'UNKNOWN')}")
+            except json.JSONDecodeError as e:
+                logger.error(f"Failed to parse LLM response as JSON: {e}")
+                # Fallback to simple answer
+                return {
+                    "action": "ANSWER",
+                    "answer": answer_json,
+                    "source": "FALLBACK"
+                }
+
+            previous_actions.append(answer)
+        
+            action = answer.get('action', 'UNKNOWN')
+            if action != 'SEARCH':
+                break
+        
+            keywords = answer.get('keywords', [])
+            search_queries = list(set(search_queries) | set(keywords))
+
+            for keyword in keywords:
+                res = self.search(keyword)
+                search_results.extend(res)
+        
+            iteration = iteration + 1
+            if iteration >= max_iterations:
+                break
+        
+        return answer
+    
     def rag_query(self, query: str) -> str:
-        """Perform RAG query: search + LLM response"""
+        """Perform agentic RAG query with multiple iterations"""
         try:
-            search_results = self.search(query)
-            prompt = self.build_prompt(query, search_results)
-            answer = self.get_llm_response(prompt)
-            return answer
+            answer = self.agentic_search(query, max_iterations=3)
+            
+            if answer.get('action') == 'ANSWER_CONTEXT':
+                return answer.get('answer', 'I found information but could not format it properly.')
+            elif answer.get('action') == 'ANSWER':
+                return answer.get('answer', 'I could not find specific information in the Quran about this topic, but based on my knowledge: [answer would go here]')
+            else:
+                return answer.get('answer', 'I processed your question but encountered an issue with the response format.')
+                
         except Exception as e:
-            logger.error(f"RAG query failed: {e}")
+            logger.error(f"Agentic RAG query failed: {e}")
             return "I apologize, but I encountered an error while processing your question. Please try again."
 
 # Initialize the bot
@@ -138,17 +241,19 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     welcome_message = """
 🕌 *Welcome to the Quran AI Assistant!*
 
-I'm here to help you find answers to your questions about the Quran using authentic sources and tafsir (explanatory commentary).
+I'm here to help you find answers to your questions about the Quran using advanced AI technology and authentic sources including tafsir (explanatory commentary).
 
-*How to use me:*
-• Simply ask me any question about the Quran
-• I'll search through the Quran and tafsir to provide you with accurate answers
-• Always include relevant Quran verses and references
+*How I work:*
+• I use intelligent search to find relevant Quran verses and tafsir
+• I can perform multiple searches to gather comprehensive information
+• I provide answers based on authentic Islamic sources with proper references
+• I always include relevant Quran verses and citations
 
 *Example questions:*
 • "What does the Quran say about patience?"
 • "Tell me about the story of Prophet Yusuf"
 • "What are the benefits of reading the Quran?"
+• "How does the Quran describe Paradise?"
 
 *Commands:*
 /start - Show this welcome message
@@ -171,18 +276,27 @@ Simply type your question in natural language. For example:
 • "What does the Quran say about kindness?"
 • "Tell me about the five pillars of Islam"
 • "What are the benefits of prayer?"
+• "How does the Quran describe the Day of Judgment?"
 
 *What I provide:*
 • Direct quotes from the Quran with surah and ayah references
 • Tafsir (explanatory commentary) when relevant
 • Clear, concise answers based on authentic sources
+• Comprehensive information gathered through intelligent search
+
+*How I work:*
+• I use advanced AI to understand your question
+• I perform multiple targeted searches to gather relevant information
+• I build context from Quran verses and tafsir
+• I provide well-structured answers with proper citations
 
 *Tips for better answers:*
 • Be specific in your questions
 • Ask about topics, stories, or concepts in the Quran
 • I can help with both simple and complex theological questions
+• I'll search multiple times if needed to give you the best answer
 
-*Note:* I only provide information that can be found in the Quran and authentic tafsir sources.
+*Note:* I provide information based on the Quran and authentic tafsir sources, with the ability to use my knowledge when needed.
 
 Need help? Just ask! 🤔
 """
@@ -195,24 +309,33 @@ async def about(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 🤖 *About Quran AI Assistant*
 
 *What I am:*
-I'm an AI-powered assistant that helps you find answers to questions about the Quran using a Retrieval-Augmented Generation (RAG) system.
+I'm an AI-powered assistant that helps you find answers to questions about the Quran using an advanced Agentic Retrieval-Augmented Generation (RAG) system.
 
 *How I work:*
-1. I search through a comprehensive database of Quran verses and tafsir
-2. I use advanced AI to understand your question
-3. I provide answers based on authentic Islamic sources
-4. I always include proper references and citations
+1. I use intelligent search to find relevant Quran verses and tafsir
+2. I can perform multiple targeted searches to gather comprehensive information
+3. I build context from multiple sources to provide complete answers
+4. I use advanced AI to understand and respond to your questions
+5. I always include proper references and citations
+
+*My capabilities:*
+• Multi-iteration search for comprehensive answers
+• Context building from Quran verses and tafsir
+• Intelligent query generation based on initial results
+• Fallback to general knowledge when needed
+• Structured responses with proper Islamic references
 
 *My sources:*
 • The Holy Quran (multiple translations)
 • Tafsir Ibn Kathir and other authentic commentaries
 • Verified Islamic scholarship
+• General Islamic knowledge when appropriate
 
 *Important note:*
 While I strive for accuracy, I'm a tool to help with learning and reference. For complex religious matters, always consult with qualified Islamic scholars.
 
 *Technology:*
-Built with modern AI technology, including OpenAI's language models and advanced search algorithms.
+Built with modern AI technology, including OpenAI's language models, advanced search algorithms, and agentic reasoning capabilities.
 
 May this tool help you in your journey of learning and understanding the Quran. 📖✨
 """
