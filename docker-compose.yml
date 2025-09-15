@@ -6,7 +6,7 @@ services:
     environment:
       - discovery.type=single-node
       - xpack.security.enabled=false
-      - ES_JAVA_OPTS=-Xms1g -Xmx1g   # 1GB heap size
+      - ES_JAVA_OPTS=-Xms1g -Xmx1g
     ulimits:
       memlock:
         soft: -1
@@ -17,3 +17,11 @@ services:
       resources:
         limits:
           memory: 2g
+
+  quran-bot:
+    build: .
+    container_name: quran-bot
+    environment:
+      - TELEGRAM_TOKEN=${TELEGRAM_TOKEN}
+    depends_on:
+      - elasticsearch
