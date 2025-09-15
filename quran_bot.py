@@ -19,6 +19,11 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+# Get admin user IDs from environment variable
+ADMIN_USER_IDS = os.getenv("ADMIN_USER_IDS", "").split(",") if os.getenv("ADMIN_USER_IDS") else []
+ADMIN_USER_IDS = [int(uid.strip()) for uid in ADMIN_USER_IDS if uid.strip().isdigit()]
+print("ADMIN_USER_IDS env:", os.getenv("ADMIN_USER_IDS"))
+
 class QuranRAGBot:
     def __init__(self):
         self.index = None
@@ -238,6 +243,10 @@ If the context doesn't contain the answer, use your own knowledge to answer the 
 # Initialize the bot
 quran_bot = QuranRAGBot()
 
+def is_admin(user_id: int) -> bool:
+    """Check if a user is an admin"""
+    return user_id in ADMIN_USER_IDS
+
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Send a message when the command /start is issued."""
     
@@ -250,29 +259,27 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         last_name=user.last_name
     )
     
-    welcome_message = """
+    # Build commands list based on user role
+    commands_list = [
+        "/start - Show this welcome message",
+        "/help - Show help information",
+        "/about - Learn more about this bot",
+        "/language - Show available languages"
+    ]
+    
+    # Add admin-only commands
+    if is_admin(user.id):
+        commands_list.append("/stats - Show bot statistics")
+    
+    commands_text = "\n".join(commands_list)
+    
+    welcome_message = f"""
 🕌 *Welcome to the Quran AI Assistant!*
 
 I'm here to help you find answers to your questions about the Quran using advanced AI technology and authentic sources including tafsir (explanatory commentary).
 
-*How I work:*
-• I use intelligent search to find relevant Quran verses and tafsir
-• I can perform multiple searches to gather comprehensive information
-• I provide answers based on authentic Islamic sources with proper references
-• I always include relevant Quran verses and citations
-
-*Example questions:*
-• "What does the Quran say about patience?"
-• "Tell me about the story of Prophet Yusuf"
-• "What are the benefits of reading the Quran?"
-• "How does the Quran describe Paradise?"
-
 *Commands:*
-/start - Show this welcome message
-/help - Show help information
-/about - Learn more about this bot
-/language - Show available languages
-/stats - Show bot statistics
+{commands_text}
 
 May Allah guide us all to the right path. 🤲
 """
@@ -281,27 +288,30 @@ May Allah guide us all to the right path. 🤲
 
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Send a message when the command /help is issued."""
-    help_text = """
+    
+    user = update.effective_user
+    
+    # Build commands list based on user role
+    commands_list = ["/start", "/help", "/about", "/language"]
+    
+    # Add admin-only commands
+    if is_admin(user.id):
+        commands_list.append("/stats")
+    
+    commands_text = ", ".join(commands_list)
+    
+    help_text = f"""
 📚 *Quran AI Assistant Help*
 
 *How to ask questions:*
 Simply type your question in natural language. For example:
 • "What does the Quran say about kindness?"
-• "Tell me about the five pillars of Islam"
-• "What are the benefits of prayer?"
-• "How does the Quran describe the Day of Judgment?"
 
 *What I provide:*
 • Direct quotes from the Quran with surah and ayah references
 • Tafsir (explanatory commentary) when relevant
 • Clear, concise answers based on authentic sources
 • Comprehensive information gathered through intelligent search
-
-*How I work:*
-• I use advanced AI to understand your question
-• I perform multiple targeted searches to gather relevant information
-• I build context from Quran verses and tafsir
-• I provide well-structured answers with proper citations
 
 *Tips for better answers:*
 • Be specific in your questions
@@ -311,9 +321,9 @@ Simply type your question in natural language. For example:
 
 *Note:* I provide information based on the Quran and authentic tafsir sources, with the ability to use my knowledge when needed.
 
-*Commands:* /start, /help, /about, /language, /stats
+*Commands:* {commands_text}
 
-Need help? Just ask! 🤔
+For feedback, please contact [@simply_jpeg](https://t.me/simply_jpeg).
 """
     
     await update.message.reply_text(help_text, parse_mode='Markdown')
@@ -366,10 +376,8 @@ async def language_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -
 • English - Full support with Quran verses and tafsir
 
 *Coming Soon:*
-• Russian (Русский) - Quran verses and tafsir
 • Kazakh (Қазақша) - Quran verses and tafsir
-
-*Note:* For now, I will answer all questions in English with Quran verses and tafsir in English. When other languages become available, you'll be able to choose your preferred language.
+• Russian (Русский) - Quran verses and tafsir
 
 Stay tuned for updates! 📚✨
 """
@@ -378,6 +386,13 @@ Stay tuned for updates! 📚✨
 
 async def stats_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Show bot statistics (admin only)."""
+    user = update.effective_user
+    
+    # Check if user is admin
+    if not is_admin(user.id):
+        await update.message.reply_text("❌ Access denied. This command is only available to administrators.")
+        return
+    
     try:
         total_users = quran_bot.user_tracker.get_user_count()
         active_today = quran_bot.user_tracker.get_active_users_today()
@@ -431,6 +446,12 @@ def main() -> None:
     if not token:
         logger.error("TELEGRAM_BOT_TOKEN not found in environment variables")
         return
+    
+    # Log admin configuration
+    if ADMIN_USER_IDS:
+        logger.info(f"Admin users configured: {ADMIN_USER_IDS}")
+    else:
+        logger.warning("No admin users configured. Set ADMIN_USER_IDS environment variable.")
     
     # Create the Application
     application = Application.builder().token(token).build()
