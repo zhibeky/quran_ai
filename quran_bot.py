@@ -1,6 +1,7 @@
 import json
 import logging
 import os
+import time
 from typing import Dict, Any
 from dotenv import load_dotenv
 from telegram import Update
@@ -397,11 +398,14 @@ async def stats_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
         total_users = quran_bot.user_tracker.get_user_count()
         active_today = quran_bot.user_tracker.get_active_users_today()
         
+        dashboard_url = os.getenv("DASHBOARD_URL", "http://localhost:8501")
         stats_text = f"""
 📊 *Bot Statistics*
 
 *Total Users:* {total_users}
 *Active Today:* {active_today}
+
+*Dashboard:* {dashboard_url}
 
 *Note:* This command shows basic statistics about bot usage.
 """
@@ -429,11 +433,46 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     # Send typing indicator
     await context.bot.send_chat_action(chat_id=update.effective_chat.id, action="typing")
     
-    # Get response from RAG system
+    # Get response from RAG system and measure latency
+    start_ts = time.time()
     response = quran_bot.rag_query(user_message)
+    duration_ms = int((time.time() - start_ts) * 1000)
+
+    # Log message to monitoring backend
+    try:
+        quran_bot.user_tracker.log_message(
+            telegram_id=user.id,
+            message_text=user_message,
+            response_text=(response if isinstance(response, str) else json.dumps(response))[:4000],
+            response_time_ms=duration_ms
+        )
+    except Exception as e:
+        logger.warning(f"Failed to log message: {e}")
     
     # Send response
     await update.message.reply_text(response, parse_mode='Markdown')
+
+async def feedback_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Collect explicit user feedback: /feedback <1-5> [optional comment]"""
+    user = update.effective_user
+    args = context.args if hasattr(context, 'args') else []
+    if not args:
+        await update.message.reply_text("Usage: /feedback <1-5> [optional comment]")
+        return
+    try:
+        rating = int(args[0])
+    except ValueError:
+        await update.message.reply_text("Please provide a numeric rating 1-5.")
+        return
+    if rating < 1 or rating > 5:
+        await update.message.reply_text("Rating must be between 1 and 5.")
+        return
+    comment = " ".join(args[1:]) if len(args) > 1 else None
+    ok = quran_bot.user_tracker.log_feedback(telegram_id=user.id, rating=rating, comment=comment)
+    if ok:
+        await update.message.reply_text("Thanks for your feedback! ✅")
+    else:
+        await update.message.reply_text("Couldn't record feedback right now, please try later.")
 
 async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Log Errors caused by Updates."""
@@ -462,6 +501,7 @@ def main() -> None:
     application.add_handler(CommandHandler("about", about))
     application.add_handler(CommandHandler("language", language_command)) # Add the new handler here
     application.add_handler(CommandHandler("stats", stats_command)) # Add the new handler here
+    application.add_handler(CommandHandler("feedback", feedback_command))
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
     
     # Add error handler

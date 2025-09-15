@@ -5,3 +5,5 @@ requests
 python-dotenv
 python-telegram-bot[job-queue]
 supabase
+streamlit
+pandas

@@ -114,3 +114,37 @@ class UserTracker:
         except Exception as e:
             logger.error(f"Failed to get active users count: {e}")
             return 0
+
+    def log_message(self, telegram_id: int, message_text: str, response_text: str, response_time_ms: int) -> bool:
+        """Log a message/response pair with latency"""
+        if not self.supabase:
+            return False
+        try:
+            self.supabase.table("messages").insert({
+                "telegram_id": telegram_id,
+                "message_text": message_text,
+                "response_text": response_text,
+                "response_time_ms": response_time_ms,
+                "created_at": datetime.utcnow().isoformat()
+            }).execute()
+            return True
+        except Exception as e:
+            logger.error(f"Failed to log message for user {telegram_id}: {e}")
+            return False
+
+    def log_feedback(self, telegram_id: int, rating: int, comment: str = None, message_id: int = None) -> bool:
+        """Log explicit user feedback (1-5) with optional comment"""
+        if not self.supabase:
+            return False
+        try:
+            self.supabase.table("feedback").insert({
+                "telegram_id": telegram_id,
+                "rating": rating,
+                "comment": comment,
+                "message_id": message_id,
+                "created_at": datetime.utcnow().isoformat()
+            }).execute()
+            return True
+        except Exception as e:
+            logger.error(f"Failed to log feedback for user {telegram_id}: {e}")
+            return False

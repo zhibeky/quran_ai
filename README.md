@@ -340,3 +340,23 @@ If you encounter issues:
 - [Requirements](requirements.txt)
 - [Docker Setup](docker-compose.yml)
 - [Start Script](start_bot.sh)
+
+## Monitoring
+
+- Feedback collection via `/feedback <1-5> [comment]` command
+- Interaction logging (message, response, latency) stored in Supabase `messages`
+- Streamlit dashboard with 5+ charts in `monitoring_dashboard.py`
+
+### Run dashboard
+
+1. Export environment variables:
+   - `SUPABASE_URL`
+   - `SUPABASE_ANON_KEY`
+2. Optionally set in `.env` and use `python-dotenv` when launching
+3. Start Streamlit:
+
+```bash
+streamlit run quran_ai/monitoring_dashboard.py --server.port 8501
+```
+
+Set `DASHBOARD_URL` env (e.g., `http://localhost:8501`) so `/stats` shows the link.
