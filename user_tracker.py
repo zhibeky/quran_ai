@@ -118,15 +118,17 @@ class UserTracker:
     def log_message(self, telegram_id: int, message_text: str, response_text: str, response_time_ms: int) -> bool:
         """Log a message/response pair with latency"""
         if not self.supabase:
+            logger.error("Supabase client not initialized")
             return False
         try:
-            self.supabase.table("messages").insert({
+            result = self.supabase.table("messages").insert({
                 "telegram_id": telegram_id,
                 "message_text": message_text,
                 "response_text": response_text,
                 "response_time_ms": response_time_ms,
                 "created_at": datetime.utcnow().isoformat()
             }).execute()
+            logger.info(f"Message insert result: {result}")
             return True
         except Exception as e:
             logger.error(f"Failed to log message for user {telegram_id}: {e}")
@@ -135,16 +137,40 @@ class UserTracker:
     def log_feedback(self, telegram_id: int, rating: int, comment: str = None, message_id: int = None) -> bool:
         """Log explicit user feedback (1-5) with optional comment"""
         if not self.supabase:
+            logger.error("Supabase client not initialized")
             return False
         try:
-            self.supabase.table("feedback").insert({
+            result = self.supabase.table("feedback").insert({
                 "telegram_id": telegram_id,
                 "rating": rating,
                 "comment": comment,
                 "message_id": message_id,
                 "created_at": datetime.utcnow().isoformat()
             }).execute()
+            logger.info(f"Feedback insert result: {result}")
             return True
         except Exception as e:
             logger.error(f"Failed to log feedback for user {telegram_id}: {e}")
             return False
+
+    def get_messages_count(self) -> int:
+        """Get total number of messages"""
+        if not self.supabase:
+            return 0
+        try:
+            resp = self.supabase.table("messages").select("id").execute()
+            return len(resp.data) if resp and resp.data is not None else 0
+        except Exception as e:
+            logger.error(f"Failed to get messages count: {e}")
+            return 0
+
+    def get_feedback_count(self) -> int:
+        """Get total number of feedback entries"""
+        if not self.supabase:
+            return 0
+        try:
+            resp = self.supabase.table("feedback").select("id").execute()
+            return len(resp.data) if resp and resp.data is not None else 0
+        except Exception as e:
+            logger.error(f"Failed to get feedback count: {e}")
+            return 0

@@ -416,6 +416,23 @@ async def stats_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
         logger.error(f"Failed to get stats: {e}")
         await update.message.reply_text("❌ Failed to retrieve statistics.")
 
+async def dbstats_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Show Supabase table counts (admin only)."""
+    user = update.effective_user
+    if not is_admin(user.id):
+        await update.message.reply_text("❌ Access denied. This command is only available to administrators.")
+        return
+    try:
+        total_users = quran_bot.user_tracker.get_user_count()
+        total_msgs = quran_bot.user_tracker.get_messages_count()
+        total_feedback = quran_bot.user_tracker.get_feedback_count()
+        await update.message.reply_text(
+            f"Users: {total_users}\nMessages: {total_msgs}\nFeedback: {total_feedback}"
+        )
+    except Exception as e:
+        logger.error(f"Failed to get DB stats: {e}")
+        await update.message.reply_text("❌ Failed to retrieve DB statistics.")
+
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Handle incoming messages and provide Quran RAG responses."""
     user_message = update.message.text
@@ -440,17 +457,28 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
 
     # Log message to monitoring backend
     try:
-        quran_bot.user_tracker.log_message(
+        ok = quran_bot.user_tracker.log_message(
             telegram_id=user.id,
             message_text=user_message,
             response_text=(response if isinstance(response, str) else json.dumps(response))[:4000],
             response_time_ms=duration_ms
         )
+        if ok:
+            logger.info(f"Successfully logged message for user {user.id}")
+        else:
+            logger.warning(f"Failed to log message for user {user.id}")
     except Exception as e:
         logger.warning(f"Failed to log message: {e}")
     
-    # Send response
-    await update.message.reply_text(response, parse_mode='Markdown')
+    # Send response with fallback for Markdown parsing errors
+    try:
+        await update.message.reply_text(response, parse_mode='Markdown')
+    except Exception as e:
+        logger.warning(f"Markdown parsing failed, sending as plain text: {e}")
+        # Remove Markdown formatting and send as plain text
+        import re
+        plain_text = re.sub(r'[*_`\[\]()]', '', response)
+        await update.message.reply_text(plain_text)
 
 async def feedback_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Collect explicit user feedback: /feedback <1-5> [optional comment]"""
@@ -469,6 +497,7 @@ async def feedback_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -
         return
     comment = " ".join(args[1:]) if len(args) > 1 else None
     ok = quran_bot.user_tracker.log_feedback(telegram_id=user.id, rating=rating, comment=comment)
+    logger.info(f"Feedback logging result for user {user.id}: {ok}")
     if ok:
         await update.message.reply_text("Thanks for your feedback! ✅")
     else:
@@ -501,6 +530,7 @@ def main() -> None:
     application.add_handler(CommandHandler("about", about))
     application.add_handler(CommandHandler("language", language_command)) # Add the new handler here
     application.add_handler(CommandHandler("stats", stats_command)) # Add the new handler here
+    application.add_handler(CommandHandler("dbstats", dbstats_command))
     application.add_handler(CommandHandler("feedback", feedback_command))
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
     

@@ -22,6 +22,7 @@ CREATE INDEX IF NOT EXISTS idx_users_last_seen ON users(last_seen);
 ALTER TABLE users ENABLE ROW LEVEL SECURITY;
 
 -- Create policy to allow all operations (you can restrict this later)
+DROP POLICY IF EXISTS "Allow all operations" ON users;
 CREATE POLICY "Allow all operations" ON users FOR ALL USING (true);
 
 -- Create function to update updated_at timestamp
@@ -34,6 +35,7 @@ END;
 $$ language 'plpgsql';
 
 -- Create trigger to automatically update updated_at
+DROP TRIGGER IF EXISTS update_users_updated_at ON users;
 CREATE TRIGGER update_users_updated_at 
     BEFORE UPDATE ON users 
     FOR EACH ROW 
@@ -53,6 +55,7 @@ CREATE INDEX IF NOT EXISTS idx_messages_telegram_id ON messages(telegram_id);
 CREATE INDEX IF NOT EXISTS idx_messages_created_at ON messages(created_at);
 
 ALTER TABLE messages ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow all operations" ON messages;
 CREATE POLICY "Allow all operations" ON messages FOR ALL USING (true);
 
 -- Feedback table for explicit user feedback
@@ -69,4 +72,5 @@ CREATE INDEX IF NOT EXISTS idx_feedback_telegram_id ON feedback(telegram_id);
 CREATE INDEX IF NOT EXISTS idx_feedback_created_at ON feedback(created_at);
 
 ALTER TABLE feedback ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow all operations" ON feedback;
 CREATE POLICY "Allow all operations" ON feedback FOR ALL USING (true);
