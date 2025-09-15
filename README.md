@@ -76,9 +76,13 @@ An intelligent AI-powered application that provides accurate answers to question
 
 ### Bot Commands
 
+**Available to All Users:**
 - `/start` - Welcome message and instructions
 - `/help` - Detailed help information
 - `/about` - Information about the bot and its capabilities
+
+**Admin-Only Commands:**
+- `/stats` - View bot statistics (requires admin access)
 
 ### Asking Questions
 
@@ -162,6 +166,9 @@ quran_ai/
 |----------|-------------|----------|
 | `TELEGRAM_BOT_TOKEN` | Your Telegram bot token from @BotFather | Yes |
 | `OPENAI_API_KEY` | Your OpenAI API key | Yes |
+| `SUPABASE_URL` | Your Supabase project URL for user tracking | No |
+| `SUPABASE_ANON_KEY` | Your Supabase anonymous key for user tracking | No |
+| `ADMIN_USER_IDS` | Comma-separated list of Telegram user IDs for admin access | No |
 
 ### Bot Settings
 
@@ -227,6 +234,37 @@ The bot provides detailed logging. Check the console output for:
 - Initialization status
 - Error messages
 - User interaction logs
+
+## 👑 Admin Access
+
+The bot includes an admin system that restricts certain commands to authorized users only.
+
+### Setting Up Admin Access
+
+1. **Get Your Telegram User ID**:
+   - Send `/start` to [@userinfobot](https://t.me/userinfobot) on Telegram
+   - Copy your user ID (a number like `123456789`)
+
+2. **Configure Admin Users**:
+   - Add your user ID to the `.env` file:
+   ```env
+   ADMIN_USER_IDS=123456789
+   ```
+   - For multiple admins, separate with commas:
+   ```env
+   ADMIN_USER_IDS=123456789,987654321,555666777
+   ```
+
+### Admin-Only Commands
+
+- `/stats` - View bot statistics (total users, active users today)
+
+### Security Features
+
+- Admin commands are completely hidden from non-admin users
+- Access is verified on every command execution
+- Unauthorized access attempts are logged
+- Admin status is checked using Telegram user IDs
 
 ## 🔒 Security Considerations
 
