@@ -2,6 +2,10 @@
 
 > **🎓 LLM Zoomcamp Final Project** - An intelligent AI-powered application that provides accurate answers to questions about the Quran using advanced Retrieval-Augmented Generation (RAG) technology.
 
+## 🤖 Try the Bot
+
+[**@ask_quran_bot**](https://t.me/ask_quran_bot) - Click to start chatting with the Quran AI Assistant
+
 ## 📋 Project Overview
 
 ### Problem Description (2/2 points)
