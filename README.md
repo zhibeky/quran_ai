@@ -8,7 +8,7 @@
 
 ## 📋 Project Overview
 
-### Problem Description (2/2 points)
+### Problem Description
 
 **The Challenge**: Muslims and Islamic scholars often need quick, accurate access to Quranic verses and their interpretations (tafsir) when studying, teaching, or answering questions about Islam. Traditional methods require manually searching through physical books or multiple digital sources, which is time-consuming and may not provide comprehensive context.
 
@@ -21,7 +21,7 @@
 
 **Impact**: The system makes Islamic knowledge more accessible while maintaining scholarly accuracy and proper citation practices, serving both individual learners and educational institutions.
 
-## 🏗️ Architecture & Retrieval Flow (2/2 points)
+## 🏗️ Architecture & Retrieval Flow
 
 ### Knowledge Base + LLM Integration
 
@@ -43,7 +43,7 @@ User Question → Semantic Search → Context Retrieval → AI Processing → St
 
 4. **Agentic RAG**: Multi-iteration search with intelligent query generation
 
-## 🔍 Retrieval Evaluation (2/2 points)
+## 🔍 Retrieval Evaluation 
 
 ### Multiple Retrieval Approaches Evaluated
 
@@ -73,7 +73,7 @@ The project implements and evaluates **three different retrieval methods**:
 
 **Conclusion**: Hybrid search significantly outperforms individual methods, providing the best balance of keyword precision and semantic understanding.
 
-## 🤖 LLM Evaluation (2/2 points)
+## 🤖 LLM Evaluation
 
 ### Multiple LLM Approaches Evaluated
 
@@ -98,7 +98,7 @@ The project implements and evaluates **three different retrieval methods**:
 
 **Conclusion**: Retrieval-augmented generation significantly improves answer quality and citation accuracy compared to direct LLM queries.
 
-## 🖥️ Interface (2/2 points)
+## 🖥️ Interface
 
 ### Multiple User Interfaces
 
@@ -127,7 +127,7 @@ The project implements and evaluates **three different retrieval methods**:
   - Evaluation experiments
   - Data analysis and visualization
 
-## 🔄 Ingestion Pipeline (2/2 points)
+## 🔄 Ingestion Pipeline
 
 ### Automated Data Processing
 
@@ -155,7 +155,7 @@ The project implements and evaluates **three different retrieval methods**:
   - Automated bot startup
   - Error handling and logging
 
-## 📊 Monitoring (2/2 points)
+## 📊 Monitoring
 
 ### Comprehensive Monitoring System
 
@@ -184,7 +184,7 @@ The project implements and evaluates **three different retrieval methods**:
 - User activity monitoring
 - Performance analytics
 
-## 🐳 Containerization (2/2 points)
+## 🐳 Containerization
 
 ### Complete Docker Setup
 
@@ -207,7 +207,7 @@ The project implements and evaluates **three different retrieval methods**:
 - Security configurations
 - Easy deployment and scaling
 
-## 🔧 Reproducibility (2/2 points)
+## 🔧 Reproducibility
 
 ### Clear Setup Instructions
 
@@ -248,7 +248,7 @@ python quran_bot.py
 - Clear data structure documentation
 - Automated data loading and validation
 
-## ⭐ Best Practices (3/3 points)
+## ⭐ Best Practices 
 
 ### 1. Hybrid Search Implementation (1 point)
 - **Combines BM25 + Embeddings**: `α * BM25 + (1-α) * embedding`
@@ -447,23 +447,6 @@ If you encounter issues:
 *Built with ❤️ for the Muslim community*
 
 ---
-
-## 📋 Evaluation Summary
-
-This project addresses all evaluation criteria:
-
-✅ **Problem Description (2/2)**: Clear problem statement and solution explanation  
-✅ **Retrieval Flow (2/2)**: Knowledge base + LLM integration  
-✅ **Retrieval Evaluation (2/2)**: Multiple approaches evaluated (BM25, embeddings, hybrid)  
-✅ **LLM Evaluation (2/2)**: Multiple approaches compared (baseline vs RAG)  
-✅ **Interface (2/2)**: UI with Streamlit dashboard + Telegram bot  
-✅ **Ingestion Pipeline (2/2)**: Automated ingestion with Python scripts  
-✅ **Monitoring (2/2)**: User feedback + dashboard with 5+ charts  
-✅ **Containerization (2/2)**: Complete docker-compose setup  
-✅ **Reproducibility (2/2)**: Clear instructions, accessible data, specified dependencies  
-✅ **Best Practices (3/3)**: Hybrid search, document re-ranking, query rewriting  
-
-**Total Score: 21/21 points** 🎉
 
 **Quick Links:**
 - [Requirements](requirements.txt)
