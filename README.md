@@ -250,17 +250,17 @@ python quran_bot.py
 
 ## ⭐ Best Practices 
 
-### 1. Hybrid Search Implementation (1 point)
+### 1. Hybrid Search Implementation
 - **Combines BM25 + Embeddings**: `α * BM25 + (1-α) * embedding`
 - **Evaluation**: Hybrid outperforms individual methods (0.6 vs 0.4 vs 0.2)
 - **Configuration**: Tunable α parameter for different use cases
 
-### 2. Document Re-ranking (1 point)
+### 2. Document Re-ranking
 - **Multi-stage Retrieval**: Retrieve 20 candidates, re-rank to top 5
 - **Score Combination**: Weighted combination of BM25 and semantic scores
 - **Quality Improvement**: Better precision through re-ranking
 
-### 3. User Query Rewriting (1 point)
+### 3. User Query Rewriting
 - **Agentic RAG**: Multi-iteration search with intelligent query generation
 - **Query Expansion**: Generate multiple search queries based on context
 - **Adaptive Search**: Learn from previous search results to improve subsequent queries
